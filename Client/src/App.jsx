@@ -64,8 +64,8 @@ const App = () => {
         </>
       )}
       <Routes>
-        <Route path="/team" element={<LogIn />}></Route>
-        <Route path="/about" element={<SignIn />}></Route>
+        <Route path="/login" element={<LogIn />}></Route>
+        <Route path="/signin" element={<SignIn />}></Route>
         <Route path="/chat" element={<Chat />}></Route>
       </Routes>
     </>
