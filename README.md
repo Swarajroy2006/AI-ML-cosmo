@@ -157,7 +157,7 @@ This app is a supportive companion, not a therapist or medical professional. It 
     <td align="center">
       <a href="https://github.com/anik2OO5">
       <img src="https://avatars.githubusercontent.com/u/179361788?v=4" width="100"><br>
-      <b>Anik Bhaumik</b><br>
+      <b>Anik Bhaumik</b> </a><br>
       Team Member
     </td>
   </tr>
