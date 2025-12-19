@@ -1,6 +1,6 @@
 # 🌌 Soul Sync  
 
-![Hackathon](https://img.shields.io/badge/Hackathon-COSMO%201%20HACK%201-purple)
+![Hackathon](https://img.shields.io/badge/Hackathon-COSMO%20HACK%201-purple)
 
 ### *Where your feelings find a voice*
 
@@ -136,6 +136,7 @@ This app is a supportive companion, not a therapist or medical professional. It 
 <table>
   <tr>
 	 <td align="center">
+    <a href="https://github.com/">
       <img src="https://avatars.githubusercontent.com/u/your-github-id?v=4" width="100"><br>
       <b>Joyjit Karmakar</b><br>
       Team Leader
@@ -148,12 +149,14 @@ This app is a supportive companion, not a therapist or medical professional. It 
       Team Member
     </td>
     <td align="center">
-      <img src="https://avatars.githubusercontent.com/u/216073437?v=4" width="100"><br>
-      <b>Saptanshu Roy</b><br>
+      <a href="https://github.com/Saptanshu05-07/">
+        <img src="https://avatars.githubusercontent.com/u/216073437?v=4" width="100"><br>
+        <b>Saptanshu Roy</b>
+      </a><br>
       Team Member
-    </td>
     <td align="center">
-      <img src="https://avatars.githubusercontent.com/u/?v=4" width="100"><br>
+      <a href="https://github.com/anik2OO5">
+      <img src="https://avatars.githubusercontent.com/u/179361788?v=4" width="100"><br>
       <b>Anik Bhaumik</b><br>
       Team Member
     </td>
