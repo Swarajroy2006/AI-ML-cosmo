@@ -2,8 +2,8 @@ import React from 'react'
 
 const Team = () => {
   return (
-    <div className=''>
-      
+    <div className='text-white bg-neutral-950 flex items-center justify-center'>
+      hello
     </div>
   )
 }

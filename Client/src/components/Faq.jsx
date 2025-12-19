@@ -1,8 +1,11 @@
 import React from "react";
 import Carousel from "../Carousel";
+import Team from "./Team";
 
 const Faq = () => {
   return (
+    <>
+    <Team/>
     <section className="w-full h-full bg-neutral-950 flex justify-center items-center">
       
       <div style={{ height: "800px", position: "relative" }}>
@@ -16,7 +19,9 @@ const Faq = () => {
           round={false}
         />
       </div>
+      
     </section>
+    </>
   );
 };
 
