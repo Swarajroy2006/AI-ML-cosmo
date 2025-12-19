@@ -21,6 +21,7 @@ const Faq = () => {
       </div>
       
     </section>
+    <footer className="bg-white">f</footer>
     </>
   );
 };
