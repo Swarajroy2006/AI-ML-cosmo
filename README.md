@@ -136,9 +136,9 @@ This app is a supportive companion, not a therapist or medical professional. It 
 <table>
   <tr>
 	 <td align="center">
-    <a href="https://github.com/">
-      <img src="https://avatars.githubusercontent.com/u/your-github-id?v=4" width="100"><br>
-      <b>Joyjit Karmakar</b><br>
+    <a href="https://github.com/ienvyJK">
+      <img src="https://avatars.githubusercontent.com/u/232658414?v=4" width="100"><br>
+      <b>Joyjit Karmakar</b></a><br>
       Team Leader
     </td>
     <td align="center">
