@@ -53,8 +53,7 @@ Many individuals—especially students—struggle to express emotions due to sti
   - AI emotional scoring (0–100)
 
 ### 🔹 Database & Auth
-- Firebase Firestore (NoSQL)
-- Firebase Authentication (Google OAuth)
+- MongoDB
 
 ### 🔹 Privacy & Security
 - Summary-based memory (no raw emotional chats stored)
