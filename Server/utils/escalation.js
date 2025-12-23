@@ -92,19 +92,12 @@ export const triggerEmergencyEscalation = async (
 
 /**
  * Generate TwiML URL for Twilio call
- * In production, this should return a URL to a TwiML endpoint
- * For now, we'll generate TwiML directly
+ * Returns the URL to your server's TwiML endpoint
  */
 const generateTwiMLUrl = (userName, severityRating) => {
-  // Note: In production, you'd want to use a TwiML application or webhook
-  // For now, this is a placeholder. You should set up a proper TwiML endpoint
-  const message = `
-    Hello, this is an automated safety alert from Soul Sync.
-    We have detected that ${userName} may be in emotional distress during a recent session.
-    If you are their emergency contact and they have consented to this call, please reach out to them immediately.
-    Thank you.
-  `;
-  return `https://demo.twilio.com/docs/voice.xml`;
+  const baseUrl = process.env.TWIML_BASE_URL || 'http://localhost:8000';
+  const encodedName = encodeURIComponent(userName);
+  return `${baseUrl}/twiml/emergency-call?userName=${encodedName}&severity=${severityRating}`;
 };
 
 /**

@@ -14,13 +14,20 @@ export const verifyToken = (req, res, next) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.userId = decoded.userId;
     next();
   } catch (error) {
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        _status: false,
+        _message: 'Token expired. Please log in again.',
+        expired: true
+      });
+    }
     return res.status(401).json({
       _status: false,
-      _message: 'Invalid or expired token'
+      _message: 'Invalid token. Please log in again.'
     });
   }
 };

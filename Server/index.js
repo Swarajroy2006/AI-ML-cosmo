@@ -4,6 +4,9 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import rateLimit from "express-rate-limit";
+import { body, validationResult } from "express-validator";
+import helmet from "helmet";
 
 // Import models
 import User from "./models/User.js";
@@ -19,8 +22,31 @@ import { triggerEmergencyEscalation, getEscalationThreshold } from "./utils/esca
 dotenv.config();
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+
+// Security middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true
+}));
+app.use(express.json({ limit: '10mb' }));
+
+// Rate limiting
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // 5 requests per window
+  message: { _status: false, _message: 'Too many attempts, please try again later' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // 30 requests per window
+  message: { _status: false, _message: 'Too many requests, please slow down' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // ============================================================
 // INITIALIZE SERVICES
@@ -28,6 +54,10 @@ app.use(express.json());
 
 if (!process.env.KEY) {
   throw new Error("API KEY missing in .env file");
+}
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-secret-key' || process.env.JWT_SECRET === 'your-super-secret-jwt-key-change-in-production') {
+  throw new Error("JWT_SECRET must be set to a strong secret value in .env file");
 }
 
 const genAI = new GoogleGenerativeAI(process.env.KEY);
@@ -55,25 +85,29 @@ mongoose.connect(mongodbUri)
  * POST /auth/signup
  * Register a new user with name, email, password, and emergency contact
  */
-app.post("/auth/signup", async (req, res) => {
+app.post("/auth/signup",
+  authLimiter,
+  [
+    body('name').trim().isLength({ min: 2, max: 100 }).withMessage('Name must be 2-100 characters'),
+    body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
+    body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
+      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/).withMessage('Password must contain uppercase, lowercase, and number'),
+    body('emergencyContact.name').trim().notEmpty().withMessage('Emergency contact name required'),
+    body('emergencyContact.relationship').trim().notEmpty().withMessage('Emergency contact relationship required'),
+    body('emergencyContact.phoneNumber').trim().notEmpty().withMessage('Emergency contact phone required'),
+  ],
+  async (req, res) => {
   try {
+    // Validate input
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        _status: false,
+        _message: errors.array()[0].msg
+      });
+    }
+
     const { name, email, password, emergencyContact } = req.body;
-
-    // Validate required fields
-    if (!name || !email || !password || !emergencyContact) {
-      return res.status(400).json({
-        _status: false,
-        _message: "Missing required fields: name, email, password, emergencyContact"
-      });
-    }
-
-    // Validate emergency contact fields
-    if (!emergencyContact.name || !emergencyContact.relationship || !emergencyContact.phoneNumber) {
-      return res.status(400).json({
-        _status: false,
-        _message: "Emergency contact must have name, relationship, and phoneNumber"
-      });
-    }
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -115,8 +149,7 @@ app.post("/auth/signup", async (req, res) => {
     console.error("Signup error:", error.message);
     res.status(500).json({
       _status: false,
-      _message: "Signup failed",
-      error: error.message
+      _message: "Signup failed. Please try again."
     });
   }
 });
@@ -125,16 +158,24 @@ app.post("/auth/signup", async (req, res) => {
  * POST /auth/login
  * Authenticate user with email and password
  */
-app.post("/auth/login", async (req, res) => {
+app.post("/auth/login",
+  authLimiter,
+  [
+    body('email').isEmail().normalizeEmail().withMessage('Valid email required'),
+    body('password').notEmpty().withMessage('Password required'),
+  ],
+  async (req, res) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
+    // Validate input
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
       return res.status(400).json({
         _status: false,
-        _message: "Email and password are required"
+        _message: 'Invalid credentials'
       });
     }
+
+    const { email, password } = req.body;
 
     // Find user by email and include password field (normally hidden)
     const user = await User.findOne({ email }).select("+password");
@@ -157,7 +198,7 @@ app.post("/auth/login", async (req, res) => {
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id },
-      process.env.JWT_SECRET || "your-secret-key",
+      process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
@@ -175,8 +216,7 @@ app.post("/auth/login", async (req, res) => {
     console.error("Login error:", error.message);
     res.status(500).json({
       _status: false,
-      _message: "Login failed",
-      error: error.message
+      _message: "Login failed. Please try again."
     });
   }
 });
@@ -189,7 +229,7 @@ app.post("/auth/login", async (req, res) => {
  * POST /sessions/start
  * Start a new chat session for an authenticated user
  */
-app.post("/sessions/start", verifyToken, async (req, res) => {
+app.post("/sessions/start", apiLimiter, verifyToken, async (req, res) => {
   try {
     const userId = req.userId;
 
@@ -212,8 +252,7 @@ app.post("/sessions/start", verifyToken, async (req, res) => {
     console.error("Session start error:", error.message);
     res.status(500).json({
       _status: false,
-      _message: "Failed to start session",
-      error: error.message
+      _message: "Failed to start session. Please try again."
     });
   }
 });
@@ -222,18 +261,26 @@ app.post("/sessions/start", verifyToken, async (req, res) => {
  * POST /sessions/:sessionId/message
  * Add a message to a chat session and get AI response
  */
-app.post("/sessions/:sessionId/message", verifyToken, async (req, res) => {
+app.post("/sessions/:sessionId/message",
+  apiLimiter,
+  verifyToken,
+  [
+    body('question').trim().isLength({ min: 1, max: 5000 }).withMessage('Message must be 1-5000 characters'),
+  ],
+  async (req, res) => {
   try {
+    // Validate input
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        _status: false,
+        _message: errors.array()[0].msg
+      });
+    }
+
     const { sessionId } = req.params;
     const { question } = req.body;
     const userId = req.userId;
-
-    if (!question) {
-      return res.status(400).json({
-        _status: false,
-        _message: "Message content is required"
-      });
-    }
 
     // Verify session exists and belongs to user
     const session = await ChatSession.findById(sessionId);
@@ -316,8 +363,7 @@ Safety rules:
     console.error("Message processing error:", error.message);
     res.status(500).json({
       _status: false,
-      _message: "Failed to process message",
-      error: error.message
+      _message: "Failed to process message. Please try again."
     });
   }
 });
@@ -326,7 +372,7 @@ Safety rules:
  * POST /sessions/:sessionId/end
  * End a chat session and generate summary + severity rating + escalation if needed
  */
-app.post("/sessions/:sessionId/end", verifyToken, async (req, res) => {
+app.post("/sessions/:sessionId/end", apiLimiter, verifyToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
     const userId = req.userId;
@@ -404,8 +450,7 @@ app.post("/sessions/:sessionId/end", verifyToken, async (req, res) => {
     console.error("Session end error:", error.message);
     res.status(500).json({
       _status: false,
-      _message: "Failed to end session",
-      error: error.message
+      _message: "Failed to end session. Please try again."
     });
   }
 });
@@ -414,7 +459,7 @@ app.post("/sessions/:sessionId/end", verifyToken, async (req, res) => {
  * GET /sessions/:sessionId
  * Get session details (messages, summary, severity rating)
  */
-app.get("/sessions/:sessionId", verifyToken, async (req, res) => {
+app.get("/sessions/:sessionId", apiLimiter, verifyToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
     const userId = req.userId;
@@ -442,8 +487,7 @@ app.get("/sessions/:sessionId", verifyToken, async (req, res) => {
     console.error("Session retrieval error:", error.message);
     res.status(500).json({
       _status: false,
-      _message: "Failed to retrieve session",
-      error: error.message
+      _message: "Failed to retrieve session. Please try again."
     });
   }
 });
@@ -452,7 +496,7 @@ app.get("/sessions/:sessionId", verifyToken, async (req, res) => {
  * GET /sessions
  * Get all sessions for authenticated user
  */
-app.get("/sessions", verifyToken, async (req, res) => {
+app.get("/sessions", apiLimiter, verifyToken, async (req, res) => {
   try {
     const userId = req.userId;
 
@@ -469,10 +513,39 @@ app.get("/sessions", verifyToken, async (req, res) => {
     console.error("Sessions retrieval error:", error.message);
     res.status(500).json({
       _status: false,
-      _message: "Failed to retrieve sessions",
-      error: error.message
+      _message: "Failed to retrieve sessions. Please try again."
     });
   }
+});
+
+// ============================================================
+// TWILIO TWIML ENDPOINT
+// ============================================================
+
+/**
+ * GET /twiml/emergency-call
+ * Generate TwiML for emergency escalation calls
+ */
+app.get("/twiml/emergency-call", (req, res) => {
+  const { userName = 'a user', severity = '4' } = req.query;
+  
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Joanna">
+    Hello, this is an automated safety alert from Soul Sync.
+    We have detected that ${userName} may be in emotional distress during a recent session, with a severity level of ${severity} out of 5.
+    If you are their emergency contact and they have consented to this call, please reach out to them immediately.
+    This message will repeat once.
+  </Say>
+  <Pause length="1"/>
+  <Say voice="Polly.Joanna">
+    Again, ${userName} may need your support. Please contact them as soon as possible.
+    Thank you.
+  </Say>
+</Response>`;
+
+  res.type('text/xml');
+  res.send(twiml);
 });
 
 // ============================================================

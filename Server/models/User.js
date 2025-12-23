@@ -30,7 +30,9 @@ const UserSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    minlength: 2,
+    maxlength: 100
   },
   email: {
     type: String,
@@ -43,8 +45,15 @@ const UserSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    minlength: 6,
-    select: false // Don't return password by default
+    minlength: [8, 'Password must be at least 8 characters'],
+    select: false, // Don't return password by default
+    validate: {
+      validator: function(v) {
+        // Password must contain at least one uppercase, one lowercase, and one digit
+        return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(v);
+      },
+      message: 'Password must contain at least one uppercase letter, one lowercase letter, and one digit'
+    }
   },
   emergencyContact: {
     type: EmergencyContactSchema,
